@@ -44,9 +44,9 @@ bool CallbacksQueue::CallbacksWorkerBreakpoint(ICorDebugAppDomain *pAppDomain, I
 
     if (!logEvents.empty())
     {
-        for (const LogPointEvent &event : logEvents)
+        for (const LogPointEvent &logEvent : logEvents)
         {
-            m_debugger.pProtocol->EmitOutputEvent(OutputConsole, event.message + '\n');
+            m_debugger.pProtocol->EmitOutputEvent(OutputConsole, logEvent.message + '\n');
         }
 
         if (bpChangeEvents.empty())
@@ -68,16 +68,16 @@ bool CallbacksQueue::CallbacksWorkerBreakpoint(ICorDebugAppDomain *pAppDomain, I
 #endif // INTEROP_DEBUGGING
 
     m_debugger.SetLastStoppedThread(pThread);
-    for (const BreakpointEvent &event : bpChangeEvents)
+    for (const BreakpointEvent &changeEvent : bpChangeEvents)
     {
         std::ostringstream ss;
-        ss << "Breakpoint error: " << event.breakpoint.message << " - ";
-        if(event.breakpoint.source.IsNull())
-            ss << event.breakpoint.funcname << "()\n";
+        ss << "Breakpoint error: " << changeEvent.breakpoint.message << " - ";
+        if (changeEvent.breakpoint.source.IsNull())
+            ss << changeEvent.breakpoint.funcname << "()\n";
         else
-            ss << event.breakpoint.source.path << ":" << event.breakpoint.line << "\n";
+            ss << changeEvent.breakpoint.source.path << ":" << changeEvent.breakpoint.line << "\n";
         m_debugger.pProtocol->EmitOutputEvent(OutputStdErr, ss.str());
-        m_debugger.pProtocol->EmitBreakpointEvent(event);
+        m_debugger.pProtocol->EmitBreakpointEvent(changeEvent);
     }
     m_debugger.pProtocol->EmitStoppedEvent(event);
     m_debugger.m_ioredirect.async_cancel();
