@@ -383,7 +383,7 @@ void FuncBreakpoints::AddAllBreakpointsInfo(std::vector<IDebugger::BreakpointInf
     {
         auto &bp = pair_bp.second;
 
-        list.emplace_back(IDebugger::BreakpointInfo{ bp.id, bp.IsVerified(), bp.enabled, bp.times, bp.condition, 
+        list.emplace_back(IDebugger::BreakpointInfo{ bp.id, bp.IsVerified(), bp.enabled, bp.times, bp.condition, bp.logMessage,
                                                      bp.name, 0, 0, bp.module, bp.params });
     }
 }

@@ -37,6 +37,7 @@ HRESULT BreakpointsHandle::UpdateLineBreakpoint(std::shared_ptr<IDebugger> &shar
             breakpoint.id = brk.first;
             breakpoint.verified = false;
             breakpoint.condition = brk.second.condition;
+            breakpoint.logMessage = brk.second.logMessage;
             breakpoint.source = breakpointsInSource.first;
             breakpoint.line = brk.second.line;
             breakpoint.endLine = brk.second.line;

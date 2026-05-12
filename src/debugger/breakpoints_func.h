@@ -88,6 +88,7 @@ private:
         ULONG32 times;
         bool enabled;
         std::string condition;
+        std::string logMessage;
         std::list<internalFuncBreakpoint> funcBreakpoints;
 
         bool IsResolved() const { return module_checked; }

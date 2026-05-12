@@ -245,6 +245,7 @@ struct Breakpoint
 
     uint32_t hitCount; // exposed for MI protocol
     std::string condition;
+    std::string logMessage;
     std::string module;
     std::string funcname;
     std::string params;
@@ -277,7 +278,8 @@ enum BreakpointReason
 {
     BreakpointChanged,
     BreakpointNew,
-    BreakpointRemoved
+    BreakpointRemoved,
+    LogPoint
 };
 
 enum StopReason
@@ -435,13 +437,16 @@ struct LineBreakpoint
     std::string module;
     int line;
     std::string condition;
+    std::string logMessage;
 
     LineBreakpoint(const std::string &module,
                    int linenum,
-                   const std::string &cond = std::string()) :
+                   const std::string &cond = std::string(),
+                   const std::string &logMsg = std::string()) :
         module(module),
         line(linenum),
-        condition(cond)
+        condition(cond),
+        logMessage(logMsg)
     {}
 };
 
@@ -451,15 +456,18 @@ struct FuncBreakpoint
     std::string func;
     std::string params;
     std::string condition;
+    std::string logMessage;
 
     FuncBreakpoint(const std::string &module,
                    const std::string &func,
                    const std::string &params,
-                   const std::string &cond = std::string()) :
+                   const std::string &cond = std::string(),
+                   const std::string &logMsg = std::string()) :
         module(module),
         func(func),
         params(params),
-        condition(cond)
+        condition(cond),
+        logMessage(logMsg)
     {}
 };
 

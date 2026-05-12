@@ -66,6 +66,7 @@ public:
         bool enabled;
         ULONG32 times;
         std::string condition;
+        std::string logMessage;
         // In case of code line in constructor, we could resolve multiple methods for breakpoints.
         // For example, `MyType obj = new MyType(1);` code will be added to all class constructors).
         std::vector<ToRelease<ICorDebugFunctionBreakpoint> > iCorFuncBreakpoints;

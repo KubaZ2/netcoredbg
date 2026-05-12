@@ -386,6 +386,9 @@ void VSCodeProtocol::EmitBreakpointEvent(const BreakpointEvent &event)
         case BreakpointRemoved:
             body["reason"] = "removed";
             break;
+        case LogPoint:
+            body["reason"] = "log";
+            break;
     }
 
     body["breakpoint"] = event.breakpoint;
@@ -416,6 +419,7 @@ static void AddCapabilitiesTo(json &capabilities)
     capabilities["supportsConfigurationDoneRequest"] = true;
     capabilities["supportsFunctionBreakpoints"] = true;
     capabilities["supportsConditionalBreakpoints"] = true;
+    capabilities["supportsLogPoints"] = true;
     capabilities["supportTerminateDebuggee"] = true;
     capabilities["supportsSetVariable"] = true;
     capabilities["supportsSetExpression"] = true;
@@ -573,7 +577,10 @@ static HRESULT HandleCommand(std::shared_ptr<IDebugger> &sharedDebugger, std::st
 
         std::vector<LineBreakpoint> lineBreakpoints;
         for (auto &b : arguments.at("breakpoints"))
-            lineBreakpoints.emplace_back(std::string(), b.at("line"), b.value("condition", std::string()));
+            lineBreakpoints.emplace_back(std::string(),
+                                         b.at("line"),
+                                         b.value("condition", std::string()),
+                                         b.value("logMessage", std::string()));
 
         std::vector<Breakpoint> breakpoints;
         IfFailRet(sharedDebugger->SetLineBreakpoints(arguments.at("source").at("path"), lineBreakpoints, breakpoints));

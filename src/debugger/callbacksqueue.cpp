@@ -2,6 +2,7 @@
 // Distributed under the MIT License.
 // See the LICENSE file in the project root for more information.
 
+#include "interfaces/types.h"
 #ifdef _MSC_VER
 #include <wtypes.h>
 #endif
@@ -35,9 +36,9 @@ bool CallbacksQueue::CallbacksWorkerBreakpoint(ICorDebugAppDomain *pAppDomain, I
     bool atEntry = false;
     ThreadId threadId(getThreadId(pThread));
     StoppedEvent event(StopBreakpoint, threadId);
-    std::vector<BreakpointEvent> bpChangeEvents;
+    std::vector<BreakpointEvent> events;
     // S_FALSE - not error and not affect on callback (callback will emit stop event)
-    if (S_FALSE != m_debugger.m_sharedBreakpoints->ManagedCallbackBreakpoint(pThread, pBreakpoint, event.breakpoint, bpChangeEvents, atEntry))
+    if (S_FALSE != m_debugger.m_sharedBreakpoints->ManagedCallbackBreakpoint(pThread, pBreakpoint, event.breakpoint, events, atEntry))
         return false;
 
     // Disable all steppers if we stop at breakpoint during step.
@@ -55,20 +56,34 @@ bool CallbacksQueue::CallbacksWorkerBreakpoint(ICorDebugAppDomain *pAppDomain, I
 #endif // INTEROP_DEBUGGING
 
     m_debugger.SetLastStoppedThread(pThread);
-    for (const BreakpointEvent &changeEvent : bpChangeEvents)
+    for (const BreakpointEvent &event : events)
     {
-        std::ostringstream ss;
-        ss << "Breakpoint error: " << changeEvent.breakpoint.message << " - ";
-        if(changeEvent.breakpoint.source.IsNull())
-            ss << changeEvent.breakpoint.funcname << "()\n";
+        if (event.reason != LogPoint)
+        {
+            std::ostringstream ss;
+            ss << "Breakpoint error: " << event.breakpoint.message << " - ";
+            if(event.breakpoint.source.IsNull())
+                ss << event.breakpoint.funcname << "()\n";
+            else
+                ss << event.breakpoint.source.path << ":" << event.breakpoint.line << "\n";
+            m_debugger.pProtocol->EmitOutputEvent(OutputStdErr, ss.str());
+            m_debugger.pProtocol->EmitBreakpointEvent(event);
+        }
         else
-            ss << changeEvent.breakpoint.source.path << ":" << changeEvent.breakpoint.line << "\n";
-        m_debugger.pProtocol->EmitOutputEvent(OutputStdErr, ss.str());
-        m_debugger.pProtocol->EmitBreakpointEvent(changeEvent);
+        {
+            m_debugger.pProtocol->EmitOutputEvent(OutputConsole, event.breakpoint.logMessage + '\n');
+        }
     }
-    m_debugger.pProtocol->EmitStoppedEvent(event);
-    m_debugger.m_ioredirect.async_cancel();
-    return true;
+
+    bool stop = event.breakpoint.logMessage.empty();
+
+    if (stop)
+    {
+        m_debugger.pProtocol->EmitStoppedEvent(event);
+        m_debugger.m_ioredirect.async_cancel();
+    }
+
+    return stop;
 }
 
 bool CallbacksQueue::CallbacksWorkerStepComplete(ICorDebugAppDomain *pAppDomain, ICorDebugThread *pThread, CorDebugStepReason reason)
