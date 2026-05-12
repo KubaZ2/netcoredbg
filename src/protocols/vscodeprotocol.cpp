@@ -386,9 +386,6 @@ void VSCodeProtocol::EmitBreakpointEvent(const BreakpointEvent &event)
         case BreakpointRemoved:
             body["reason"] = "removed";
             break;
-        case LogPoint:
-            body["reason"] = "log";
-            break;
     }
 
     body["breakpoint"] = event.breakpoint;

@@ -278,8 +278,7 @@ enum BreakpointReason
 {
     BreakpointChanged,
     BreakpointNew,
-    BreakpointRemoved,
-    LogPoint
+    BreakpointRemoved
 };
 
 enum StopReason
@@ -321,6 +320,14 @@ struct BreakpointEvent
     Breakpoint breakpoint;
 
     BreakpointEvent(const BreakpointReason &reason, const Breakpoint &breakpoint) : reason(reason), breakpoint(breakpoint) {}
+};
+
+struct LogPointEvent
+{
+    Breakpoint breakpoint;
+    std::string message;
+
+    LogPointEvent(const Breakpoint &breakpoint, const std::string &message) : breakpoint(breakpoint), message(message) {}
 };
 
 struct ExitedEvent

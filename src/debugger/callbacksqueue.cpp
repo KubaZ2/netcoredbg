@@ -36,10 +36,22 @@ bool CallbacksQueue::CallbacksWorkerBreakpoint(ICorDebugAppDomain *pAppDomain, I
     bool atEntry = false;
     ThreadId threadId(getThreadId(pThread));
     StoppedEvent event(StopBreakpoint, threadId);
-    std::vector<BreakpointEvent> events;
+    std::vector<BreakpointEvent> bpChangeEvents;
+    std::vector<LogPointEvent> logEvents;
     // S_FALSE - not error and not affect on callback (callback will emit stop event)
-    if (S_FALSE != m_debugger.m_sharedBreakpoints->ManagedCallbackBreakpoint(pThread, pBreakpoint, event.breakpoint, events, atEntry))
+    if (S_FALSE != m_debugger.m_sharedBreakpoints->ManagedCallbackBreakpoint(pThread, pBreakpoint, event.breakpoint, bpChangeEvents, logEvents, atEntry))
         return false;
+
+    if (!logEvents.empty())
+    {
+        for (const LogPointEvent &event : logEvents)
+        {
+            m_debugger.pProtocol->EmitOutputEvent(OutputConsole, event.message + '\n');
+        }
+
+        if (bpChangeEvents.empty())
+            return false;
+    }
 
     // Disable all steppers if we stop at breakpoint during step.
     m_debugger.m_uniqueSteppers->DisableAllSteppers(pAppDomain);
@@ -56,34 +68,20 @@ bool CallbacksQueue::CallbacksWorkerBreakpoint(ICorDebugAppDomain *pAppDomain, I
 #endif // INTEROP_DEBUGGING
 
     m_debugger.SetLastStoppedThread(pThread);
-    for (const BreakpointEvent &event : events)
+    for (const BreakpointEvent &event : bpChangeEvents)
     {
-        if (event.reason != LogPoint)
-        {
-            std::ostringstream ss;
-            ss << "Breakpoint error: " << event.breakpoint.message << " - ";
-            if(event.breakpoint.source.IsNull())
-                ss << event.breakpoint.funcname << "()\n";
-            else
-                ss << event.breakpoint.source.path << ":" << event.breakpoint.line << "\n";
-            m_debugger.pProtocol->EmitOutputEvent(OutputStdErr, ss.str());
-            m_debugger.pProtocol->EmitBreakpointEvent(event);
-        }
+        std::ostringstream ss;
+        ss << "Breakpoint error: " << event.breakpoint.message << " - ";
+        if(event.breakpoint.source.IsNull())
+            ss << event.breakpoint.funcname << "()\n";
         else
-        {
-            m_debugger.pProtocol->EmitOutputEvent(OutputConsole, event.breakpoint.logMessage + '\n');
-        }
+            ss << event.breakpoint.source.path << ":" << event.breakpoint.line << "\n";
+        m_debugger.pProtocol->EmitOutputEvent(OutputStdErr, ss.str());
+        m_debugger.pProtocol->EmitBreakpointEvent(event);
     }
-
-    bool stop = event.breakpoint.logMessage.empty();
-
-    if (stop)
-    {
-        m_debugger.pProtocol->EmitStoppedEvent(event);
-        m_debugger.m_ioredirect.async_cancel();
-    }
-
-    return stop;
+    m_debugger.pProtocol->EmitStoppedEvent(event);
+    m_debugger.m_ioredirect.async_cancel();
+    return true;
 }
 
 bool CallbacksQueue::CallbacksWorkerStepComplete(ICorDebugAppDomain *pAppDomain, ICorDebugThread *pThread, CorDebugStepReason reason)

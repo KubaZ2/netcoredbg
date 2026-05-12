@@ -32,7 +32,7 @@ void LineBreakpoints::DeleteAll()
     m_breakpointsMutex.unlock();
 }
 
-HRESULT LineBreakpoints::CheckBreakpointHit(ICorDebugThread *pThread, ICorDebugBreakpoint *pBreakpoint, Breakpoint &breakpoint, std::vector<BreakpointEvent> &events)
+HRESULT LineBreakpoints::CheckBreakpointHit(ICorDebugThread *pThread, ICorDebugBreakpoint *pBreakpoint, Breakpoint &breakpoint, std::vector<BreakpointEvent> &bpChangeEvents, std::vector<LogPointEvent> &logEvents)
 {
     HRESULT Status;
     ToRelease<ICorDebugFunctionBreakpoint> pFunctionBreakpoint;
@@ -93,7 +93,7 @@ HRESULT LineBreakpoints::CheckBreakpointHit(ICorDebugThread *pThread, ICorDebugB
             if (!output.empty())
             {
                 breakpoint.message = "The condition for a breakpoint failed to execute. The condition was '" + b.condition + "'. The error returned was '" + output + "'.";
-                events.emplace_back(BreakpointChanged, breakpoint);
+                bpChangeEvents.emplace_back(BreakpointChanged, breakpoint);
             }
             else if (!breakpoint.logMessage.empty())
             {
@@ -103,12 +103,11 @@ HRESULT LineBreakpoints::CheckBreakpointHit(ICorDebugThread *pThread, ICorDebugB
                         output = "unknown error";
 
                     breakpoint.message = "The log message for a breakpoint failed to execute. The log message was '" + b.logMessage + "'. The error returned was '" + output + "'.";
-                    events.emplace_back(BreakpointChanged, breakpoint);
+                    bpChangeEvents.emplace_back(BreakpointChanged, breakpoint);
                 }
                 else
                 {
-                    breakpoint.logMessage = output;
-                    events.emplace_back(LogPoint, breakpoint);
+                    logEvents.emplace_back(breakpoint, output);
                 }
             }
 
