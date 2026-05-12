@@ -17,6 +17,9 @@ namespace netcoredbg
 
 std::string LogMessage::Format(const std::vector<std::string> &values) const
 {
+    if (IsEmpty())
+        return std::string();
+
     std::stringstream ss;
 
     std::size_t maxIndex = format.size() - 1;
@@ -29,6 +32,11 @@ std::string LogMessage::Format(const std::vector<std::string> &values) const
     ss << format[maxIndex];
 
     return ss.str();
+}
+
+bool LogMessage::IsEmpty() const
+{
+    return format.empty() && args.empty();
 }
 
 // This class implements container, which hold elements of type `T', where

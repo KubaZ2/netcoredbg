@@ -486,6 +486,10 @@ void VSCodeProtocol::EmitEvent(const std::string &name, const nlohmann::json &bo
 static HRESULT ParseLogMessage(const std::string &rawLogMessage, LogMessage &logMessage)
 {
     logMessage = LogMessage();
+
+    if (rawLogMessage.empty())
+        return S_OK;
+
     auto &format = logMessage.format;
     auto &args = logMessage.args;
 

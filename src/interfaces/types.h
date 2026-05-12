@@ -241,10 +241,7 @@ struct LogMessage
 
     std::string Format(const std::vector<std::string> &values) const;
 
-    bool IsEmpty() const
-    {
-        return format.empty() && args.empty();
-    }
+    bool IsEmpty() const;
 };
 
 struct Breakpoint
