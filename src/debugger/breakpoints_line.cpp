@@ -95,14 +95,14 @@ HRESULT LineBreakpoints::CheckBreakpointHit(ICorDebugThread *pThread, ICorDebugB
                 breakpoint.message = "The condition for a breakpoint failed to execute. The condition was '" + b.condition + "'. The error returned was '" + output + "'.";
                 bpChangeEvents.emplace_back(BreakpointChanged, breakpoint);
             }
-            else if (!breakpoint.logMessage.empty())
+            else if (!breakpoint.logMessage.IsEmpty())
             {
                 if (FAILED(Status = BreakpointUtils::FormatLogMessage(b.logMessage, m_sharedVariables.get(), pThread, output)))
                 {
                     if (output.empty())
                         output = "unknown error";
 
-                    breakpoint.message = "The log message for a breakpoint failed to execute. The log message was '" + b.logMessage + "'. The error returned was '" + output + "'.";
+                    breakpoint.message = "The log message for a breakpoint failed to execute. The error returned was '" + output + "'.";
                     bpChangeEvents.emplace_back(BreakpointChanged, breakpoint);
                 }
                 else

@@ -16,6 +16,7 @@
 
 // note: order matters, vscodeprotocol.h should be included before winerror.h
 #include "protocols/vscodeprotocol.h"
+#include "interfaces/types.h"
 #include "winerror.h"
 
 #include "interfaces/idebugger.h"
@@ -482,6 +483,70 @@ void VSCodeProtocol::EmitEvent(const std::string &name, const nlohmann::json &bo
     EmitMessageWithLog(LOG_EVENT, message);
 }
 
+static HRESULT ParseLogMessage(const std::string &rawLogMessage, LogMessage &logMessage)
+{
+    logMessage = LogMessage();
+    auto &format = logMessage.format;
+    auto &args = logMessage.args;
+
+    std::string currentText;
+    bool inArg = false;
+
+    for (size_t i = 0; i < rawLogMessage.size(); ++i) 
+    {
+        char c = rawLogMessage[i];
+
+        if (c == '\\' && i + 1 < rawLogMessage.size())
+        {
+            char next = rawLogMessage[i + 1];
+            if (next == '{' || next == '}' || next == '\\')
+            {
+                currentText += next;
+                i++;
+                continue;
+            }
+        }
+
+        if (inArg)
+        {
+            if (c == '}')
+            {
+                args.push_back(currentText);
+                currentText.clear();
+                inArg = false;
+            }
+            else
+            {
+                currentText += c;
+            }
+        }
+        else
+        {
+            if (c == '{')
+            {
+                format.push_back(currentText);
+                currentText.clear();
+                inArg = true;
+            }
+            else
+            {
+                currentText += c;
+            }
+        }
+    }
+
+    if (inArg)
+    {
+        format.back() += "{" + currentText;
+    }
+    else
+    {
+        format.push_back(currentText);
+    }
+
+    return S_OK;
+}
+
 static HRESULT HandleCommand(std::shared_ptr<IDebugger> &sharedDebugger, std::string &fileExec, std::vector<std::string> &execArgs,
                              const std::string &command, const json &arguments, json &body)
 {
@@ -574,10 +639,15 @@ static HRESULT HandleCommand(std::shared_ptr<IDebugger> &sharedDebugger, std::st
 
         std::vector<LineBreakpoint> lineBreakpoints;
         for (auto &b : arguments.at("breakpoints"))
+        {
+            auto rawLogMessage = b.value("logMessage", std::string());
+            LogMessage logMessage;
+            IfFailRet(ParseLogMessage(rawLogMessage, logMessage));
             lineBreakpoints.emplace_back(std::string(),
                                          b.at("line"),
                                          b.value("condition", std::string()),
-                                         b.value("logMessage", std::string()));
+                                         logMessage);
+        }
 
         std::vector<Breakpoint> breakpoints;
         IfFailRet(sharedDebugger->SetLineBreakpoints(arguments.at("source").at("path"), lineBreakpoints, breakpoints));

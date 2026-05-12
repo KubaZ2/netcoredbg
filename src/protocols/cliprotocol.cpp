@@ -1335,7 +1335,7 @@ HRESULT CLIProtocol::doCommand<CommandTag::Break>(const std::string &input, cons
     Breakpoint breakpoint;
     if (!filename.empty())
     {
-        Status = m_breakpointsHandle.SetLineBreakpoint(m_sharedDebugger, modulename, filename, linenum, condition, breakpoint);
+        Status = m_breakpointsHandle.SetLineBreakpoint(m_sharedDebugger, modulename, filename, linenum, condition, {}, breakpoint);
     }
     else
     {

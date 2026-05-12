@@ -15,6 +15,7 @@
 #include <string>
 #include <unordered_map>
 #include "interfaces/idebugger.h"
+#include "interfaces/types.h"
 #include "utils/torelease.h"
 
 namespace netcoredbg
@@ -88,7 +89,7 @@ private:
         ULONG32 times;
         bool enabled;
         std::string condition;
-        std::string logMessage;
+        LogMessage logMessage;
         std::list<internalFuncBreakpoint> funcBreakpoints;
 
         bool IsResolved() const { return module_checked; }

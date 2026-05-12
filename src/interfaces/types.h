@@ -234,6 +234,19 @@ public:
     }
 };
 
+struct LogMessage
+{
+    std::vector<std::string> format;
+    std::vector<std::string> args;
+
+    std::string Format(const std::vector<std::string> &values) const;
+
+    bool IsEmpty() const
+    {
+        return format.empty() && args.empty();
+    }
+};
+
 struct Breakpoint
 {
     uint32_t id;
@@ -245,7 +258,7 @@ struct Breakpoint
 
     uint32_t hitCount; // exposed for MI protocol
     std::string condition;
-    std::string logMessage;
+    LogMessage logMessage;
     std::string module;
     std::string funcname;
     std::string params;
@@ -444,12 +457,12 @@ struct LineBreakpoint
     std::string module;
     int line;
     std::string condition;
-    std::string logMessage;
+    LogMessage logMessage;
 
     LineBreakpoint(const std::string &module,
                    int linenum,
                    const std::string &cond = std::string(),
-                   const std::string &logMsg = std::string()) :
+                   const LogMessage &logMsg = LogMessage()) :
         module(module),
         line(linenum),
         condition(cond),

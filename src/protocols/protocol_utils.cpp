@@ -52,7 +52,7 @@ HRESULT BreakpointsHandle::UpdateLineBreakpoint(std::shared_ptr<IDebugger> &shar
 
 HRESULT BreakpointsHandle::SetLineBreakpoint(std::shared_ptr<IDebugger> &sharedDebugger,
                                              const std::string &module, const std::string &filename, int linenum,
-                                             const std::string &condition, Breakpoint &breakpoint)
+                                             const std::string &condition, const LogMessage &logMessage, Breakpoint &breakpoint)
 {
     HRESULT Status;
 
@@ -62,7 +62,7 @@ HRESULT BreakpointsHandle::SetLineBreakpoint(std::shared_ptr<IDebugger> &sharedD
     for (auto it : breakpointsInSource)
         lineBreakpoints.push_back(it.second);
 
-    lineBreakpoints.emplace_back(module, linenum, condition);
+    lineBreakpoints.emplace_back(module, linenum, condition, logMessage);
 
     std::vector<Breakpoint> breakpoints;
     IfFailRet(sharedDebugger->SetLineBreakpoints(filename, lineBreakpoints, breakpoints));
@@ -376,36 +376,85 @@ std::string GetConditionPrepareArgs(std::vector<std::string> &args)
     return condition;
 }
 
-bool ParseBreakpoint(std::vector<std::string> &args, struct LineBreak &lb)
+bool CreateLogMessageFormat(const std::string &formatStr, std::vector<std::string> &format)
+{
+    std::size_t lastPos = 0, pos = 0;
+
+    while ((pos = formatStr.find("%s", lastPos)) != std::string::npos)
+    {
+        format.push_back(formatStr.substr(lastPos, pos - lastPos));
+        format.push_back("");
+        lastPos = pos + 2;
+    }
+
+    if (lastPos < formatStr.size())
+        format.push_back(formatStr.substr(lastPos));
+
+    return true;
+}
+
+bool ParseBreakpoint(std::vector<std::string> &args, struct LineBreak &lb, bool isLogPoint)
 {
     bool ok;
     lb.condition = GetConditionPrepareArgs(args);
-    std::string prepString("");
 
-    if (args.size() == 1)
-        prepString = args.at(0);
-    else
-        for (auto &str : args)
-            prepString += str;
+    bool success = false;
 
-    std::size_t i = prepString.find('!');
-
-    if (i == std::string::npos)
+    for (auto i = args.begin(); i != args.end(); ++i)
     {
-        lb.module.clear();
+        auto &arg = *i;
+
+        std::size_t colonIndex = arg.rfind(':');
+
+        if (colonIndex == std::string::npos)
+            continue;
+
+        auto moduleAndFile = arg.substr(0, colonIndex);
+
+        std::size_t exclIndex = moduleAndFile.find('!');
+
+        if (exclIndex != std::string::npos)
+        {
+            lb.module = moduleAndFile.substr(0, exclIndex);
+            lb.filename = moduleAndFile.substr(exclIndex + 1);
+        }
+        else
+        {
+            lb.module.clear();
+            lb.filename = moduleAndFile;
+        }
+
+        lb.linenum = ProtocolUtils::ParseInt(arg.substr(colonIndex + 1), ok);
+
+        if (!ok)
+        {
+            lb.filename.clear();
+            lb.linenum = 0;
+            continue;
+        }
+
+        args.erase(args.begin(), i);
+        success = true;
+        break;
     }
-    else
+
+    if (!success)
+        return false;
+
+    if (isLogPoint)
     {
-        lb.module = std::string(prepString, 0, i);
-        prepString.erase(0, i + 1);
+        if (args.empty())
+            return false;
+
+        LogMessage logMessage;
+
+        if (!CreateLogMessageFormat(args[0], logMessage.format))
+            return false;
+
+        logMessage.args = std::vector<std::string>(args.begin() + 1, args.end());
     }
 
-    i = prepString.rfind(':');
-
-    lb.filename = prepString.substr(0, i);
-    lb.linenum = ProtocolUtils::ParseInt(prepString.substr(i + 1), ok);
-
-    return ok && lb.linenum > 0;
+    return true;
 }
 
 bool ParseBreakpoint(std::vector<std::string> &args, struct FuncBreak &fb)

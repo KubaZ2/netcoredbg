@@ -24,6 +24,7 @@ struct LineBreak
     std::string filename;
     unsigned int linenum;
     std::string condition;
+    LogMessage logMessage;
 };
 
 struct FuncBreak
@@ -44,7 +45,7 @@ private:
 public:
     HRESULT UpdateLineBreakpoint(std::shared_ptr<IDebugger> &sharedDebugger, int id, int linenum, Breakpoint &breakpoint);
     HRESULT SetLineBreakpoint(std::shared_ptr<IDebugger> &sharedDebugger, const std::string &module, const std::string &filename,
-                              int linenum, const std::string &condition, Breakpoint &breakpoints);
+                              int linenum, const std::string &condition, const LogMessage &logMessage, Breakpoint &breakpoints);
     HRESULT SetFuncBreakpoint(std::shared_ptr<IDebugger> &sharedDebugger, const std::string &module, const std::string &funcname,
                               const std::string &params, const std::string &condition, Breakpoint &breakpoint);
     HRESULT SetExceptionBreakpoints(std::shared_ptr<IDebugger> &sharedDebugger, std::vector<ExceptionBreakpoint> &excBreakpoints,
@@ -66,7 +67,7 @@ namespace ProtocolUtils
     bool GetIndices(const std::vector<std::string> &args, int &index1, int &index2);
     BreakType GetBreakpointType(const std::vector<std::string> &args);
     std::string GetConditionPrepareArgs(std::vector<std::string> &args);
-    bool ParseBreakpoint(std::vector<std::string> &args, struct LineBreak &lb);
+    bool ParseBreakpoint(std::vector<std::string> &args, struct LineBreak &lb, bool isLogPoint);
     bool ParseBreakpoint(std::vector<std::string> &args, struct FuncBreak &fb);
     std::string AddrToString(std::uintptr_t addr);
 

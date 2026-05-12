@@ -4,6 +4,7 @@
 
 #include "debugger/breakpointutils.h"
 #include "debugger/variables.h"
+#include "interfaces/types.h"
 #include "metadata/attributes.h"
 #include "utils/torelease.h"
 
@@ -140,8 +141,14 @@ HRESULT SkipBreakpoint(ICorDebugModule *pModule, mdMethodDef methodToken, bool j
     return S_FALSE; // don't skip breakpoint
 }
 
-HRESULT FormatLogMessage(const std::string &logMessage, Variables *pVariables, ICorDebugThread *pThread, std::string &output)
+HRESULT FormatLogMessage(const LogMessage &logMessage, Variables *pVariables, ICorDebugThread *pThread, std::string &output)
 {
+    if (logMessage.args.empty())
+    {
+        output = logMessage.Format({});
+        return S_OK;
+    }
+
     HRESULT Status;
     DWORD threadId = 0;
     IfFailRet(pThread->GetID(&threadId));
@@ -150,52 +157,19 @@ HRESULT FormatLogMessage(const std::string &logMessage, Variables *pVariables, I
     ToRelease<ICorDebugProcess> iCorProcess;
     IfFailRet(pThread->GetProcess(&iCorProcess));
 
-    std::string message = "";
+    std::vector<std::string> argValues;
+    argValues.reserve(logMessage.args.size());
 
-    size_t lastPos = 0, pos = 0;
-    while ((pos = logMessage.find('{', pos)) != std::string::npos)
+    for (const auto &arg : logMessage.args)
     {
-        if (pos > 0 && logMessage[pos - 1] == '\\')
-        {
-            message += logMessage.substr(lastPos, pos - lastPos - 1) + '{';
-            ++pos;
-            lastPos = pos;
-            continue;
-        }
-
-        message += logMessage.substr(lastPos, pos - lastPos);
-
-        size_t endPos = logMessage.find('}', pos);
-        if (endPos == std::string::npos)
-        {
-            message += logMessage.substr(pos);
-            lastPos = logMessage.size();
-            break;
-        }
-
-        std::string expression = logMessage.substr(pos + 1, endPos - pos - 1);
         Variable variable;
 
-        if (FAILED(Status = pVariables->Evaluate(iCorProcess, frameId, expression, variable, output)))
-        {
-            if (output.empty())
-                output = "unknown error";
-
-            message += output;
-        }
-        else
-        {
-            message += variable.value;
-        }
-
-        pos = endPos + 1;
-        lastPos = pos;
+        bool failed = FAILED(Status = pVariables->Evaluate(iCorProcess, frameId, arg, variable, output));
+        argValues.push_back(failed ? (output.empty() ? "unknown error" : output)
+                                      : variable.value);
     }
 
-    if (lastPos < logMessage.size())
-        message += logMessage.substr(lastPos);
-
-    output = message;
+    output = logMessage.Format(argValues);
 
     return S_OK;
 }
