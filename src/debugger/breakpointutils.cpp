@@ -140,6 +140,66 @@ HRESULT SkipBreakpoint(ICorDebugModule *pModule, mdMethodDef methodToken, bool j
     return S_FALSE; // don't skip breakpoint
 }
 
+HRESULT FormatLogMessage(const std::string &logMessage, Variables *pVariables, ICorDebugThread *pThread, std::string &output)
+{
+    HRESULT Status;
+    DWORD threadId = 0;
+    IfFailRet(pThread->GetID(&threadId));
+    FrameId frameId(ThreadId{threadId}, FrameLevel{0});
+
+    ToRelease<ICorDebugProcess> iCorProcess;
+    IfFailRet(pThread->GetProcess(&iCorProcess));
+
+    std::string message = "";
+
+    size_t lastPos = 0, pos = 0;
+    while ((pos = logMessage.find('{', pos)) != std::string::npos)
+    {
+        if (pos > 0 && logMessage[pos - 1] == '\\')
+        {
+            message += logMessage.substr(lastPos, pos - lastPos - 1) + '{';
+            ++pos;
+            lastPos = pos;
+            continue;
+        }
+
+        message += logMessage.substr(lastPos, pos - lastPos);
+
+        size_t endPos = logMessage.find('}', pos);
+        if (endPos == std::string::npos)
+        {
+            message += logMessage.substr(pos);
+            lastPos = logMessage.size();
+            break;
+        }
+
+        std::string expression = logMessage.substr(pos + 1, endPos - pos - 1);
+        Variable variable;
+
+        if (FAILED(Status = pVariables->Evaluate(iCorProcess, frameId, expression, variable, output)))
+        {
+            if (output.empty())
+                output = "unknown error";
+
+            message += output;
+        }
+        else
+        {
+            message += variable.value;
+        }
+
+        pos = endPos + 1;
+        lastPos = pos;
+    }
+
+    if (lastPos < logMessage.size())
+        message += logMessage.substr(lastPos);
+
+    output = message;
+
+    return S_OK;
+}
+
 } // namespace BreakpointUtils
 
 } // namespace netcoredbg

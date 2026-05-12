@@ -97,7 +97,19 @@ HRESULT LineBreakpoints::CheckBreakpointHit(ICorDebugThread *pThread, ICorDebugB
             }
             else if (!breakpoint.logMessage.empty())
             {
-                events.emplace_back(LogPoint, breakpoint);
+                if (FAILED(Status = BreakpointUtils::FormatLogMessage(b.logMessage, m_sharedVariables.get(), pThread, output)))
+                {
+                    if (output.empty())
+                        output = "unknown error";
+
+                    breakpoint.message = "The log message for a breakpoint failed to execute. The log message was '" + b.logMessage + "'. The error returned was '" + output + "'.";
+                    events.emplace_back(BreakpointChanged, breakpoint);
+                }
+                else
+                {
+                    breakpoint.logMessage = output;
+                    events.emplace_back(LogPoint, breakpoint);
+                }
             }
 
             return S_OK;
