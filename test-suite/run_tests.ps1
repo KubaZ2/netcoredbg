@@ -71,6 +71,7 @@ $ALL_TEST_NAMES = @(
     "VSCodeTestExtensionMethods"
     "VSCodeTestBreakpointWithoutStop"
     "VSCodeTestUnhandledException"
+    "VSCodeTestLogPoint"
 )
 
 # Skipped tests:
