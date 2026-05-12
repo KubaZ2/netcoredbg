@@ -178,22 +178,6 @@ namespace NetcoreDbgTest.Script
             Assert.True(VSCodeDebugger.IsEventReceived(filter), @"__FILE__:__LINE__"+"\n"+caller_trace);
         }
 
-
-        // public void WasLogPointHit(string caller_trace, string logMessage)
-        // {
-        //     Func<string, bool> filter = (resJSON) => {
-        //         if (VSCodeDebugger.isResponseContainProperty(resJSON, "event", "output")
-        //             && VSCodeDebugger.isResponseContainProperty(resJSON, "category", "console")
-        //             && VSCodeDebugger.isResponseContainProperty(resJSON, "output", logMessage + "\n")) {
-        //             threadId = Convert.ToInt32(VSCodeDebugger.GetResponsePropertyValue(resJSON, "threadId"));
-        //             return true;
-        //         }
-        //         return false;
-        //     };
-        //
-        //     Assert.True(VSCodeDebugger.IsEventReceived(filter), @"__FILE__:__LINE__"+"\n"+caller_trace);
-        // }
-
         public void Continue(string caller_trace)
         {
             ContinueRequest continueRequest = new ContinueRequest();
