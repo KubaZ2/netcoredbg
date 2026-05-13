@@ -308,7 +308,7 @@ namespace
     // This function serializes "OutputEvent" to specified output stream and used for two
     // purposes: to compute output size, and to perform the output directly.
     template <typename T1>
-    void serialize_output(std::ostream& stream, uint64_t counter, string_view name, T1& text, const Source& source, int line = -1)
+    void serialize_output(std::ostream& stream, uint64_t counter, string_view name, T1& text, const Source& source, int line)
     {
         stream << "{\"seq\":" << counter 
             << ",\"event\":\"output\",\"type\":\"event\",\"body\":{\"category\":\"" << name
@@ -334,6 +334,18 @@ namespace
 
 void VSCodeProtocol::EmitOutputEvent(OutputCategory category, string_view output, string_view, DWORD threadId)
 {
+    LogFuncEntry();
+
+    static const string_view categories[] = {"console", "stdout", "stderr"};
+
+    // determine "category name"
+    assert(category == OutputConsole || category == OutputStdOut || category == OutputStdErr);
+    const string_view& name = categories[category];
+
+    EscapedString<JSON_escape_rules> escaped_text(output);
+
+    std::lock_guard<std::mutex> lock(m_outMutex);
+
     Source source;
     int line = -1;
     int totalFrames = 0;
@@ -351,23 +363,6 @@ void VSCodeProtocol::EmitOutputEvent(OutputCategory category, string_view output
             }
         }
     }
-
-    EmitOutputEvent(category, output, source, line);
-}
-
-void VSCodeProtocol::EmitOutputEvent(OutputCategory category, string_view output, const Source &source, int line)
-{
-    LogFuncEntry();
-
-    static const string_view categories[] = {"console", "stdout", "stderr"};
-
-    // determine "category name"
-    assert(category == OutputConsole || category == OutputStdOut || category == OutputStdErr);
-    const string_view& name = categories[category];
-
-    EscapedString<JSON_escape_rules> escaped_text(output);
-
-    std::lock_guard<std::mutex> lock(m_outMutex);
 
     // compute size of headers without text (text could be huge, no reason parse it for size, that we already know)
     CountingStream count;

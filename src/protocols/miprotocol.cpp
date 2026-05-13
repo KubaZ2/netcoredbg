@@ -538,28 +538,6 @@ void MIProtocol::EmitOutputEvent(OutputCategory category, string_view output, st
     cout.flush();
 }
 
-void MIProtocol::EmitOutputEvent(OutputCategory category, string_view output, const Source &source, int line)
-{
-    LogFuncEntry();
-
-    std::lock_guard<std::mutex> lock(m_outMutex);
-
-    cout << "=message,text=\"" << EscapeMIValue(output) << "\",send-to=\"output-window\"";
-
-    if (!source.IsNull())
-    {
-        cout << ",source=\"" << EscapeMIValue(source.path) << "\"";
-    }
-
-    if (line != -1)
-    {
-        cout << ",line=\"" << line << "\"";
-    }
-
-    cout << "\n";
-    cout.flush();
-}
-
 static HRESULT HandleCommand(std::shared_ptr<IDebugger> &sharedDebugger, BreakpointsHandle &breakpointsHandle, MIProtocol::VariablesHandle &variablesHandle,
                              std::string &fileExec, std::vector<std::string> &execArgs, const std::string& command, const std::vector<std::string> &args, std::string &output)
 {

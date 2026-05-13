@@ -30,7 +30,9 @@ bool HandleLogPoint(IProtocol *protocol, StoppedEvent &event, std::vector<Breakp
         std::string output;
         if (SUCCEEDED(BreakpointUtils::FormatLogMessage(event.breakpoint.logMessage, variables.get(), pThread, output)))
         {
-            protocol->EmitOutputEvent(OutputConsole, output + '\n', event.breakpoint.source, event.breakpoint.line);
+            DWORD rawThreadId;
+            pThread->GetID(&rawThreadId);
+            protocol->EmitOutputEvent(OutputConsole, output + '\n', "", rawThreadId);
 
             if (bpChangeEvents.empty())
                 return true;
@@ -98,7 +100,7 @@ bool CallbacksQueue::CallbacksWorkerBreakpoint(ICorDebugAppDomain *pAppDomain, I
             ss << changeEvent.breakpoint.funcname << "()\n";
         else
             ss << changeEvent.breakpoint.source.path << ":" << changeEvent.breakpoint.line << "\n";
-        m_debugger.pProtocol->EmitOutputEvent(OutputStdErr, ss.str(), changeEvent.breakpoint.source, changeEvent.breakpoint.line);
+        m_debugger.pProtocol->EmitOutputEvent(OutputStdErr, ss.str());
         m_debugger.pProtocol->EmitBreakpointEvent(changeEvent);
     }
     m_debugger.pProtocol->EmitStoppedEvent(event);
