@@ -308,10 +308,10 @@ namespace
     // This function serializes "OutputEvent" to specified output stream and used for two
     // purposes: to compute output size, and to perform the output directly.
     template <typename T1>
-    void serialize_output(std::ostream& stream, uint64_t counter, string_view name, T1& text, Source& source)
+    void serialize_output(std::ostream& stream, uint64_t counter, string_view name, T1& text, const Source& source, int line = -1)
     {
         stream << "{\"seq\":" << counter 
-            << ", \"event\":\"output\",\"type\":\"event\",\"body\":{\"category\":\"" << name
+            << ",\"event\":\"output\",\"type\":\"event\",\"body\":{\"category\":\"" << name
             << "\",\"output\":\"" << text << "\"";
 
         if (!source.IsNull())
@@ -321,6 +321,11 @@ namespace
             stream << ",\"source\":{\"name\":\"" << source.name << "\",\"path\":\"" << escaped_source_path << "\"}";
         }
 
+        if (line != -1)
+        {
+            stream << ",\"line\":" << line;
+        }
+
         stream <<  "}}";
 
         stream.flush();
@@ -328,6 +333,29 @@ namespace
 }
 
 void VSCodeProtocol::EmitOutputEvent(OutputCategory category, string_view output, string_view, DWORD threadId)
+{
+    Source source;
+    int line = -1;
+    int totalFrames = 0;
+    std::vector<StackFrame> stackFrames;
+    if (threadId && SUCCEEDED(m_sharedDebugger->GetStackTrace(ThreadId(threadId), FrameLevel(0), 0, stackFrames, totalFrames)))
+    {
+        // Find first frame with source file data (code with PDB/user code).
+        for (const StackFrame& stackFrame : stackFrames)
+        {
+            if (!stackFrame.source.IsNull())
+            {
+                source = stackFrame.source;
+                line = stackFrame.line;
+                break;
+            }
+        }
+    }
+
+    EmitOutputEvent(category, output, source, line);
+}
+
+void VSCodeProtocol::EmitOutputEvent(OutputCategory category, string_view output, const Source &source, int line)
 {
     LogFuncEntry();
 
@@ -341,32 +369,16 @@ void VSCodeProtocol::EmitOutputEvent(OutputCategory category, string_view output
 
     std::lock_guard<std::mutex> lock(m_outMutex);
 
-    Source source;
-    int totalFrames = 0;
-    std::vector<StackFrame> stackFrames;
-    if (threadId && SUCCEEDED(m_sharedDebugger->GetStackTrace(ThreadId(threadId), FrameLevel(0), 0, stackFrames, totalFrames)))
-    {
-        // Find first frame with source file data (code with PDB/user code).
-        for (const StackFrame& stackFrame : stackFrames)
-        {
-            if (!stackFrame.source.IsNull())
-            {
-                source = stackFrame.source;
-                break;
-            }
-        }
-    }
-
     // compute size of headers without text (text could be huge, no reason parse it for size, that we already know)
     CountingStream count;
-    serialize_output(count, m_seqCounter, name, "", source);
+    serialize_output(count, m_seqCounter, name, "", source, line);
 
     // compute total size of headers + text
     auto const total_size = count.size() + escaped_text.size();
 
     // perform output
     cout << CONTENT_LENGTH << total_size << TWO_CRLF;
-    serialize_output(cout, m_seqCounter, name, escaped_text, source);
+    serialize_output(cout, m_seqCounter, name, escaped_text, source, line);
 
     ++m_seqCounter;
 }

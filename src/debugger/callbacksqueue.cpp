@@ -46,7 +46,7 @@ bool CallbacksQueue::CallbacksWorkerBreakpoint(ICorDebugAppDomain *pAppDomain, I
     {
         for (const LogPointEvent &logEvent : logEvents)
         {
-            m_debugger.pProtocol->EmitOutputEvent(OutputConsole, logEvent.message + '\n');
+            m_debugger.pProtocol->EmitOutputEvent(OutputConsole, logEvent.message + '\n', logEvent.breakpoint.source, logEvent.breakpoint.line);
         }
 
         if (bpChangeEvents.empty())
@@ -76,7 +76,7 @@ bool CallbacksQueue::CallbacksWorkerBreakpoint(ICorDebugAppDomain *pAppDomain, I
             ss << changeEvent.breakpoint.funcname << "()\n";
         else
             ss << changeEvent.breakpoint.source.path << ":" << changeEvent.breakpoint.line << "\n";
-        m_debugger.pProtocol->EmitOutputEvent(OutputStdErr, ss.str());
+        m_debugger.pProtocol->EmitOutputEvent(OutputStdErr, ss.str(), changeEvent.breakpoint.source, changeEvent.breakpoint.line);
         m_debugger.pProtocol->EmitBreakpointEvent(changeEvent);
     }
     m_debugger.pProtocol->EmitStoppedEvent(event);

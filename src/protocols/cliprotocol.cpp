@@ -991,6 +991,12 @@ void CLIProtocol::EmitOutputEvent(OutputCategory category, string_view output, s
 }
 
 
+void CLIProtocol::EmitOutputEvent(OutputCategory category, string_view output, const netcoredbg::Source &source, int line)
+{
+    EmitOutputEvent(category, output, source.path, static_cast<DWORD>(0));
+}
+
+
 template <>
 HRESULT CLIProtocol::doCommand<CommandTag::Backtrace>(const std::string &, const std::vector<std::string> &args_orig, std::string &output)
 {
