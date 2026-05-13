@@ -30,7 +30,7 @@ void FuncBreakpoints::DeleteAll()
     m_breakpointsMutex.unlock();
 }
 
-HRESULT FuncBreakpoints::CheckBreakpointHit(ICorDebugThread *pThread, ICorDebugBreakpoint *pBreakpoint, Breakpoint &breakpoint, std::vector<BreakpointEvent> &bpChangeEvents)
+HRESULT FuncBreakpoints::CheckBreakpointHit(ICorDebugThread *pThread, ICorDebugBreakpoint *pBreakpoint, Breakpoint &breakpoint, std::vector<BreakpointEvent> &bpChangeEvents, std::shared_ptr<Variables> &variables)
 {
     if (m_funcBreakpoints.empty())
         return S_FALSE; // Stopped at break, but no breakpoints.
@@ -107,6 +107,7 @@ HRESULT FuncBreakpoints::CheckBreakpointHit(ICorDebugThread *pThread, ICorDebugB
                 bpChangeEvents.emplace_back(BreakpointChanged, breakpoint);
             }
 
+            variables = m_sharedVariables;
             return S_OK;
         }
     }
@@ -187,6 +188,7 @@ HRESULT FuncBreakpoints::SetFuncBreakpoints(bool haveProcess, const std::vector<
             fbp.name = fb.func;
             fbp.params = fb.params;
             fbp.condition = fb.condition;
+            fbp.logMessage = fb.logMessage;
 
             if (haveProcess)
                 ResolveFuncBreakpoint(fbp);
@@ -199,6 +201,7 @@ HRESULT FuncBreakpoints::SetFuncBreakpoints(bool haveProcess, const std::vector<
             ManagedFuncBreakpoint &fbp = b->second;
 
             fbp.condition = fb.condition;
+            fbp.logMessage = fb.logMessage;
             fbp.ToBreakpoint(breakpoint);
         }
 

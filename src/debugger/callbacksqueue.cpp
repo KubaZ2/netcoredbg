@@ -2,6 +2,7 @@
 // Distributed under the MIT License.
 // See the LICENSE file in the project root for more information.
 
+#include "debugger/breakpointutils.h"
 #include "interfaces/types.h"
 #ifdef _MSC_VER
 #include <wtypes.h>
@@ -22,6 +23,35 @@
 namespace netcoredbg
 {
 
+bool HandleLogPoint(IProtocol *protocol, StoppedEvent &event, std::vector<BreakpointEvent> &bpChangeEvents, std::shared_ptr<Variables> variables, ICorDebugThread *pThread)
+{
+    if (variables)
+    {
+        std::string output;
+        if (SUCCEEDED(BreakpointUtils::FormatLogMessage(event.breakpoint.logMessage, variables.get(), pThread, output)))
+        {
+            protocol->EmitOutputEvent(OutputConsole, output + '\n', event.breakpoint.source, event.breakpoint.line);
+
+            if (bpChangeEvents.empty())
+                return true;
+        }
+        else
+        {
+            event.breakpoint.message = "The log message for a breakpoint failed to execute. " + output;
+            bpChangeEvents.emplace_back(BreakpointChanged, event.breakpoint);
+        }
+    }
+    else
+    {
+        // This should never happen, defensive check
+
+        event.breakpoint.message = "The log message for a breakpoint failed to execute. No variables information.";
+        bpChangeEvents.emplace_back(BreakpointChanged, event.breakpoint);
+    }
+
+    return false;
+}
+
 bool CallbacksQueue::CallbacksWorkerBreakpoint(ICorDebugAppDomain *pAppDomain, ICorDebugThread *pThread, ICorDebugBreakpoint *pBreakpoint)
 {
     // S_FALSE or error - continue callback.
@@ -37,21 +67,13 @@ bool CallbacksQueue::CallbacksWorkerBreakpoint(ICorDebugAppDomain *pAppDomain, I
     ThreadId threadId(getThreadId(pThread));
     StoppedEvent event(StopBreakpoint, threadId);
     std::vector<BreakpointEvent> bpChangeEvents;
-    std::vector<LogPointEvent> logEvents;
+    std::shared_ptr<Variables> variables;
     // S_FALSE - not error and not affect on callback (callback will emit stop event)
-    if (S_FALSE != m_debugger.m_sharedBreakpoints->ManagedCallbackBreakpoint(pThread, pBreakpoint, event.breakpoint, bpChangeEvents, logEvents, atEntry))
+    if (S_FALSE != m_debugger.m_sharedBreakpoints->ManagedCallbackBreakpoint(pThread, pBreakpoint, event.breakpoint, bpChangeEvents, atEntry, variables))
         return false;
 
-    if (!logEvents.empty())
-    {
-        for (const LogPointEvent &logEvent : logEvents)
-        {
-            m_debugger.pProtocol->EmitOutputEvent(OutputConsole, logEvent.message + '\n', logEvent.breakpoint.source, logEvent.breakpoint.line);
-        }
-
-        if (bpChangeEvents.empty())
-            return false;
-    }
+    if (!event.breakpoint.logMessage.IsEmpty() && HandleLogPoint(m_debugger.pProtocol, event, bpChangeEvents, variables, pThread))
+        return false;
 
     // Disable all steppers if we stop at breakpoint during step.
     m_debugger.m_uniqueSteppers->DisableAllSteppers(pAppDomain);

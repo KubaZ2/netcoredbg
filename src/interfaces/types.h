@@ -332,14 +332,6 @@ struct BreakpointEvent
     BreakpointEvent(const BreakpointReason &reason, const Breakpoint &breakpoint) : reason(reason), breakpoint(breakpoint) {}
 };
 
-struct LogPointEvent
-{
-    Breakpoint breakpoint;
-    std::string message;
-
-    LogPointEvent(const Breakpoint &breakpoint, const std::string &message) : breakpoint(breakpoint), message(message) {}
-};
-
 struct ExitedEvent
 {
     int exitCode;
@@ -473,13 +465,13 @@ struct FuncBreakpoint
     std::string func;
     std::string params;
     std::string condition;
-    std::string logMessage;
+    LogMessage logMessage;
 
     FuncBreakpoint(const std::string &module,
                    const std::string &func,
                    const std::string &params,
                    const std::string &cond = std::string(),
-                   const std::string &logMsg = std::string()) :
+                   const LogMessage &logMsg = LogMessage()) :
         module(module),
         func(func),
         params(params),
