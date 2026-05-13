@@ -98,6 +98,22 @@ namespace NetcoreDbgTest.Script
                         @"__FILE__:__LINE__"+"\n"+caller_trace);
         }
 
+
+        public void AddFuncBreakpoint(string funcName, string Condition = null, string LogMessage = null)
+        {
+            FuncBreakpointList.Add(new FunctionBreakpoint(funcName, Condition)
+            {
+                logMessage = LogMessage
+            });
+        }
+
+        public void SetFuncBreakpoints(string caller_trace)
+        {
+            SetFunctionBreakpointsRequest setFunctionBreakpointsRequest = new SetFunctionBreakpointsRequest();
+            setFunctionBreakpointsRequest.arguments.breakpoints.AddRange(FuncBreakpointList);
+            Assert.True(VSCodeDebugger.Request(setFunctionBreakpointsRequest).Success, @"__FILE__:__LINE__"+"\n"+caller_trace);
+        }
+
         public void AddBreakpoint(string caller_trace, string bpName, string Condition = null, string LogMessage = null)
         {
             Breakpoint bp = ControlInfo.Breakpoints[bpName];
@@ -198,13 +214,24 @@ namespace NetcoreDbgTest.Script
         string BreakpointSourceName;
         List<SourceBreakpoint> BreakpointList = new List<SourceBreakpoint>();
         List<int> BreakpointLines = new List<int>();
+        List<FunctionBreakpoint> FuncBreakpointList = new List<FunctionBreakpoint>();
     }
 }
 
-namespace VSCodeExampleTest
+namespace VSCodeTestLogPoint
 {
     class Program
     {
+        static void testfunc()
+        {                                                                       Label.Breakpoint("lp_func");
+            Console.WriteLine("A logpoint is set on this testfunc");
+        }
+
+        static void testfunc_with_param(string param)
+        {                                                                       Label.Breakpoint("lp_func_param");
+            Console.WriteLine("A logpoint is set on this testfunc with param: " + param);
+        }
+
         static void Main(string[] args)
         {
             Label.Checkpoint("init", "finish", (Object context) => {
@@ -217,8 +244,14 @@ namespace VSCodeExampleTest
                 Context.AddBreakpoint(@"__FILE__:__LINE__", "lp4", LogMessage: "not {closed");
                 Context.AddBreakpoint(@"__FILE__:__LINE__", "lp5", LogMessage: "not closed}");
                 Context.AddBreakpoint(@"__FILE__:__LINE__", "lp6", LogMessage: "not closed\\}");
+                Context.AddBreakpoint(@"__FILE__:__LINE__", "lp7", LogMessage: "abc {str} abc");
 
                 Context.SetBreakpoints(@"__FILE__:__LINE__");
+
+                Context.AddFuncBreakpoint("testfunc", LogMessage: "Logpoint hit in func");
+                Context.AddFuncBreakpoint("testfunc_with_param", LogMessage: "Logpoint hit in func with param: {param}");
+
+                Context.SetFuncBreakpoints(@"__FILE__:__LINE__");
 
                 Context.PrepareEnd(@"__FILE__:__LINE__");
                 Context.WasEntryPointHit(@"__FILE__:__LINE__");
@@ -230,9 +263,14 @@ namespace VSCodeExampleTest
                     "abc {escaped}\n",
                     "not {closed\n",
                     "not closed}\n",
-                    "not closed}\n"
+                    "not closed}\n",
+                    "abc \"some string\" abc\n",
+                    "Logpoint hit in func\n",
+                    "Logpoint hit in func with param: \"parameter value\"\n"
                 });
             });
+
+            System.Threading.Thread.Sleep(1000);
 
             Console.WriteLine("Logpoint \"lp1\" is set here"); Label.Breakpoint("lp1");
 
@@ -247,6 +285,14 @@ namespace VSCodeExampleTest
             Console.WriteLine("Logpoint \"lp5\" is set here"); Label.Breakpoint("lp5");
 
             Console.WriteLine("Logpoint \"lp6\" is set here"); Label.Breakpoint("lp6");
+
+            string str = "some string";
+
+            Console.WriteLine("Logpoint \"lp7\" is set here"); Label.Breakpoint("lp7");
+
+            testfunc();
+
+            testfunc_with_param("parameter value");
 
             Label.Checkpoint("finish", "", (Object context) => {
                 Context Context = (Context)context;

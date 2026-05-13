@@ -947,7 +947,11 @@ static HRESULT HandleCommand(std::shared_ptr<IDebugger> &sharedDebugger, std::st
                 name.erase(i, closeBrace);
             }
 
-            funcBreakpoints.emplace_back(module, name, params, b.value("condition", std::string()));
+            auto rawLogMessage = b.value("logMessage", std::string());
+            LogMessage logMessage;
+            IfFailRet(ParseLogMessage(rawLogMessage, logMessage));
+
+            funcBreakpoints.emplace_back(module, name, params, b.value("condition", std::string()), logMessage);
         }
 
         std::vector<Breakpoint> breakpoints;

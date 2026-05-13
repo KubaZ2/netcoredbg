@@ -18,6 +18,7 @@ void FuncBreakpoints::ManagedFuncBreakpoint::ToBreakpoint(Breakpoint &breakpoint
     breakpoint.id = this->id;
     breakpoint.verified = this->IsVerified();
     breakpoint.condition = this->condition;
+    breakpoint.logMessage = this->logMessage;
     breakpoint.module = this->module;
     breakpoint.funcname = this->name;
     breakpoint.params = this->params;
