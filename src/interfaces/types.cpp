@@ -36,7 +36,7 @@ std::string LogMessage::Format(const std::vector<std::string> &values) const
 
 bool LogMessage::IsEmpty() const
 {
-    return format.empty() && args.empty();
+    return format.empty();
 }
 
 // This class implements container, which hold elements of type `T', where
