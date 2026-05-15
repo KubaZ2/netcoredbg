@@ -55,6 +55,7 @@ ALL_TEST_NAMES=(
     "MITestBreakpointWithoutStop"
     "MITestBreakpointUpdate"
     "MITestUnhandledException"
+    "MITestLogPoint"
     "VSCodeExampleTest"
     "VSCodeTestBreakpoint"
     "VSCodeTestFuncBreak"

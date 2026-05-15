@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for more information.
 
 #include "debugger/frames.h"
+#include "pal/inc/rt/palrt.h"
 #include "utils/platform.h"
 #include "utils/torelease.h"
 #include "protocols/miprotocol.h"

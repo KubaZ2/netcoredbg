@@ -433,7 +433,7 @@ bool ParseBreakpoint(std::vector<std::string> &args, struct LineBreak &lb, bool 
             continue;
         }
 
-        args.erase(args.begin(), i);
+        args.erase(args.begin(), i + 1);
         success = true;
         break;
     }
@@ -446,7 +446,7 @@ bool ParseBreakpoint(std::vector<std::string> &args, struct LineBreak &lb, bool 
         if (args.empty())
             return false;
 
-        LogMessage logMessage;
+        auto &logMessage = lb.logMessage = LogMessage();
 
         if (!CreateLogMessageFormat(args[0], logMessage.format))
             return false;
