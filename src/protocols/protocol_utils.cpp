@@ -75,7 +75,7 @@ HRESULT BreakpointsHandle::SetLineBreakpoint(std::shared_ptr<IDebugger> &sharedD
 
 HRESULT BreakpointsHandle::SetFuncBreakpoint(std::shared_ptr<IDebugger> &sharedDebugger,
                                              const std::string &module, const std::string &funcname, const std::string &params,
-                                             const std::string &condition, Breakpoint &breakpoint)
+                                             const std::string &condition, const LogMessage &logMessage, Breakpoint &breakpoint)
 {
     HRESULT Status;
 
@@ -84,7 +84,7 @@ HRESULT BreakpointsHandle::SetFuncBreakpoint(std::shared_ptr<IDebugger> &sharedD
     for (const auto &it : m_funcBreakpoints)
         funcBreakpoints.push_back(it.second);
 
-    funcBreakpoints.emplace_back(module, funcname, params, condition);
+    funcBreakpoints.emplace_back(module, funcname, params, condition, logMessage);
 
     std::vector<Breakpoint> breakpoints;
     IfFailRet(sharedDebugger->SetFuncBreakpoints(funcBreakpoints, breakpoints));
@@ -393,12 +393,19 @@ bool CreateLogMessageFormat(const std::string &formatStr, std::vector<std::strin
     return true;
 }
 
+bool ParseLogMessage(const std::vector<std::string> &args, LogMessage &logMessage)
+{
+    if (args.empty() || !CreateLogMessageFormat(args[0], logMessage.format))
+        return false;
+
+    logMessage.args = std::vector<std::string>(args.begin() + 1, args.end());
+    return true;
+}
+
 bool ParseBreakpoint(std::vector<std::string> &args, struct LineBreak &lb, bool isLogPoint)
 {
-    bool ok;
+    bool ok = false;
     lb.condition = GetConditionPrepareArgs(args);
-
-    bool success = false;
 
     for (auto i = args.begin(); i != args.end(); ++i)
     {
@@ -434,68 +441,68 @@ bool ParseBreakpoint(std::vector<std::string> &args, struct LineBreak &lb, bool 
         }
 
         args.erase(args.begin(), i + 1);
-        success = true;
+        ok = true;
         break;
     }
 
-    if (!success)
-        return false;
-
-    if (isLogPoint)
-    {
-        if (args.empty())
-            return false;
-
-        auto &logMessage = lb.logMessage = LogMessage();
-
-        if (!CreateLogMessageFormat(args[0], logMessage.format))
-            return false;
-
-        logMessage.args = std::vector<std::string>(args.begin() + 1, args.end());
-    }
-
-    return true;
+    return ok && (!isLogPoint || ParseLogMessage(args, lb.logMessage));
 }
 
-bool ParseBreakpoint(std::vector<std::string> &args, struct FuncBreak &fb)
+bool ParseBreakpoint(std::vector<std::string> &args, struct FuncBreak &fb, bool isLogPoint)
 {
     fb.condition = GetConditionPrepareArgs(args);
-    std::string prepString("");
 
-    if (args.size() == 1)
-        prepString = args.at(0);
-    else
-        for (auto &str : args)
-            prepString += str;
+    auto i = args.begin();
 
-    std::size_t i = prepString.find('!');
-
-    if (i == std::string::npos)
+    for (; i != args.end(); ++i)
     {
+        auto &arg = *i;
+
+        if (arg[0] == '-')
+        {
+            if (arg.size() >= 2 && arg[1] == '-' && ++i == args.end())
+                return false;
+        }
+        else
+            break;
+    }
+
+    if (i == args.end())
+        return false;
+
+    args.erase(args.begin(), i);
+
+    auto &loc = args[0];
+
+    std::size_t exclIndex = loc.find('!');
+
+    if (exclIndex == std::string::npos)
         fb.module.clear();
-    }
     else
     {
-        fb.module = std::string(prepString, 0, i);
-        prepString.erase(0, i + 1);
+        fb.module = std::string(loc, 0, exclIndex);
+        loc.erase(0, exclIndex + 1);
     }
 
-    i = prepString.find('(');
-    if (i != std::string::npos)
+    auto parenIndex = loc.find('(');
+    if (parenIndex != std::string::npos)
     {
-        std::size_t closeBrace = prepString.find(')');
+        std::size_t closeParenIndex = loc.find(')', parenIndex);
 
-        fb.params = std::string(prepString, i, closeBrace - i + 1);
-        prepString.erase(i, closeBrace);
+        if (closeParenIndex == std::string::npos)
+            return false;
+
+        fb.params = std::string(loc, parenIndex, closeParenIndex - parenIndex + 1);
+        loc.erase(parenIndex, closeParenIndex - parenIndex + 1);
     }
     else
-    {
         fb.params.clear();
-    }
 
-    fb.funcname = prepString;
+    fb.funcname = loc;
 
-    return true;
+    args.erase(args.begin());
+
+    return !isLogPoint || ParseLogMessage(args, fb.logMessage);
 }
 
 std::string AddrToString(std::uintptr_t addr)

@@ -570,8 +570,8 @@ static HRESULT HandleCommand(std::shared_ptr<IDebugger> &sharedDebugger, Breakpo
             {
                 struct FuncBreak fb;
 
-                if (ProtocolUtils::ParseBreakpoint(args, fb)
-                    && SUCCEEDED(breakpointsHandle.SetFuncBreakpoint(sharedDebugger, fb.module, fb.funcname, fb.params, fb.condition, breakpoint)))
+                if (ProtocolUtils::ParseBreakpoint(args, fb, isLogPoint)
+                    && SUCCEEDED(breakpointsHandle.SetFuncBreakpoint(sharedDebugger, fb.module, fb.funcname, fb.params, fb.condition, fb.logMessage, breakpoint)))
                     Status = S_OK;
             }
 

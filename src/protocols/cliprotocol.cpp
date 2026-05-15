@@ -1350,7 +1350,7 @@ HRESULT CLIProtocol::doCommand<CommandTag::Break>(const std::string &input, cons
         // remove spaces in params
         params.erase(std::remove(params.begin(), params.end(), ' '), params.end());
 
-        Status = m_breakpointsHandle.SetFuncBreakpoint(m_sharedDebugger, modulename, funcname, params, condition, breakpoint);
+        Status = m_breakpointsHandle.SetFuncBreakpoint(m_sharedDebugger, modulename, funcname, params, condition, {}, breakpoint);
     }
 
     if (SUCCEEDED(Status))

@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include "interfaces/iprotocol.h"
+#include "interfaces/types.h"
 
 namespace netcoredbg
 {
@@ -33,6 +34,7 @@ struct FuncBreak
     std::string funcname;
     std::string params;
     std::string condition;
+    LogMessage logMessage;
 };
 
 class BreakpointsHandle
@@ -47,7 +49,7 @@ public:
     HRESULT SetLineBreakpoint(std::shared_ptr<IDebugger> &sharedDebugger, const std::string &module, const std::string &filename,
                               int linenum, const std::string &condition, const LogMessage &logMessage, Breakpoint &breakpoints);
     HRESULT SetFuncBreakpoint(std::shared_ptr<IDebugger> &sharedDebugger, const std::string &module, const std::string &funcname,
-                              const std::string &params, const std::string &condition, Breakpoint &breakpoint);
+                              const std::string &params, const std::string &condition, const LogMessage &logMessage, Breakpoint &breakpoint);
     HRESULT SetExceptionBreakpoints(std::shared_ptr<IDebugger> &sharedDebugger, std::vector<ExceptionBreakpoint> &excBreakpoints,
                                     std::vector<Breakpoint> &breakpoints);
     HRESULT SetLineBreakpointCondition(std::shared_ptr<IDebugger> &sharedDebugger, uint32_t id, const std::string &condition);
@@ -68,7 +70,7 @@ namespace ProtocolUtils
     BreakType GetBreakpointType(const std::vector<std::string> &args);
     std::string GetConditionPrepareArgs(std::vector<std::string> &args);
     bool ParseBreakpoint(std::vector<std::string> &args, struct LineBreak &lb, bool isLogPoint);
-    bool ParseBreakpoint(std::vector<std::string> &args, struct FuncBreak &fb);
+    bool ParseBreakpoint(std::vector<std::string> &args, struct FuncBreak &fb, bool isLogPoint);
     std::string AddrToString(std::uintptr_t addr);
 
 } // namespace ProtocolUtils
