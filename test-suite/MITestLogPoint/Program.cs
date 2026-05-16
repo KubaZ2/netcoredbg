@@ -230,29 +230,61 @@ namespace MITestLogPoint
 {
     class Program
     {
+        static void testfunc()
+        {                                                                       Label.Breakpoint("lp_func");
+            Console.WriteLine("testfunc");
+        }
+
+        static void testfunc_with_param(string param)
+        {                                                                       Label.Breakpoint("lp_func_param");
+            Console.WriteLine("testfunc_with_param");
+        }
+
         static void Main(string[] args)
         {
             Label.Checkpoint("init", "finish", (Object context) => {
                 Context Context = (Context)context;
                 Context.Prepare(@"__FILE__:__LINE__");
+
+                Context.MIDebugger.Request($"3-dprintf-insert -f {Context.ControlInfo.Breakpoints["lp1"]} \"lp1 log point\"");
+
+                Context.MIDebugger.Request($"4-dprintf-insert -f {Context.ControlInfo.Breakpoints["lp2"]} \"value of x = %s\" x");
+
+                Context.MIDebugger.Request($"5-dprintf-insert -f {Context.ControlInfo.Breakpoints["lp3"]} \"value of y = %s\" y");
+
+                Context.MIDebugger.Request($"6-dprintf-insert -f {Context.ControlInfo.Breakpoints["lp_func"]} \"log point in testfunc\"");
+
+                Context.MIDebugger.Request($"7-dprintf-insert -f {Context.ControlInfo.Breakpoints["lp_func_param"]} \"log point in testfunc_with_param, param = %s\" param");
+
                 Context.WasEntryPointHit(@"__FILE__:__LINE__");
-
-                var resp = Context.MIDebugger.Request($"3-dprintf-insert -f {(LineBreakpoint)Context.ControlInfo.Breakpoints["BREAK1"]} \"BREAK1 log point\"");
-                var id = ((MIConst)((MITuple)resp["bkpt"])["number"]).CString;
-
                 Context.Continue(@"__FILE__:__LINE__");
 
                 Context.WereAllLogPointsHit(@"__FILE__:__LINE__", new List<string> {
-                    "BREAK1 log point\\n"
+                    "lp1 log point\\n",
+                    "value of x = 42\\n",
+                    "value of y = \\\"some y value\\\"\\n",
+                    "log point in testfunc\\n",
+                    "log point in testfunc_with_param, param = \\\"test\\\"\\n"
                 });
             });
 
             System.Threading.Thread.Sleep(1000);
 
-            Console.WriteLine("Hello World!");      Label.Breakpoint("BREAK1");
+            Console.WriteLine("Hello World!");      Label.Breakpoint("lp1");
+
+            int x = 42;
+
+            Console.WriteLine("x");                 Label.Breakpoint("lp2");
+
+            string y = "some y value";
+
+            Console.WriteLine("y");                 Label.Breakpoint("lp3");
+
+            testfunc();
+
+            testfunc_with_param("test");
 
             Label.Checkpoint("finish", "", (Object context) => {
-                // =message,text="BREAK1 log point\n",send-to="output-window"
                 Context Context = (Context)context;
                 Context.WasExit(@"__FILE__:__LINE__");
                 Context.DebuggerExit(@"__FILE__:__LINE__");
